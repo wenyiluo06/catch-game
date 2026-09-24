@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <!-- 移动端关键设置：禁止缩放，适配手机屏幕 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>择兹吃小蛋糕</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      background-color: #e3e3ef;
+      color: #7b6897;
+      font-family: system-ui, sans-serif;
+      flex-direction: column;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+    #gameCanvas {
+      background-color: #e3e3ef;
+      display: block;
+    }
+    .start-screen, .end-screen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgb(227 227 239);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+      padding:20px;
+      text-align:center;
+    }
+    button {
+      padding: 12px 30px;
+      font-size: 20px;
+      margin-top:20px;
+      border:none;
+      border-radius:8px;
+      background: #7b6897;
+      color: #ededf1;
+      cursor:pointer;
+    }
+    button:hover {
+      background: #a19bb6;
+    }
+    .hide {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+<canvas id="gameCanvas"></canvas>
+
+<!-- 开始界面 -->
+<div id="startScreen" class="start-screen">
+  <h1>择兹吃小蛋糕</h1>
+  <p>电脑：← → 方向键移动<br>手机：手指在画布左右滑动控制</p>
+  <button id="startBtn">开始进食</button>
+</div>
+
+<!-- 结束界面 -->
+<div id="endScreen" class="end-screen hide">
+  <h1>完成一次投喂！</h1>
+  <p>本轮吃到：<span id="scoreText">0</span> 个小蛋糕</p>
+  <button id="restartBtn">再次投喂</button>
+</div>
+
+<script>
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+
+  const startScreen = document.getElementById('startScreen');
+  const endScreen = document.getElementById('endScreen');
+  const startBtn = document.getElementById('startBtn');
+  const restartBtn = document.getElementById('restartBtn');
+  const scoreText = document.getElementById('scoreText');
+
+  // ==========游戏配置==========
+  const TOTAL_ITEM_COUNT = 25; // 本局总掉落物件数量
+  const PLAYER_WIDTH = 200;
+  const PLAYER_HEIGHT = 200;
+  const ITEM_SIZE = 70;
+  const ITEM_SPEED = 2;
+
+  let bgImg = new Image();
+  let playerImg = new Image();
+  let itemImg = new Image();
+
+  bgImg.src = "bg.png";
+  playerImg.src = "player.png";
+  itemImg.src = "fall.png";
+
+  function drawCoverBg(ctx, img, cw, ch) {
+    const iw = img.width;
+    const ih = img.height;
+    const ir = iw / ih;
+    const cr = cw / ch;
+    let sw, sh, sx, sy;
+    if (ir > cr) {
+      sh = ih;
+      sw = ih * cr;
+      sx = (iw - sw) / 2;
+      sy = 0;
+    } else {
+      sw = iw;
+      sh = iw / cr;
+      sx = 0;
+      sy = (ih - sh) / 2;
+    }
+    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, cw, ch);
+  }
+
+  // 游戏状态
+  let gameRunning = false;
+  let playerX = canvas.width / 2 - PLAYER_WIDTH / 2;
+  let playerY = canvas.height - PLAYER_HEIGHT - 10;
+  let items = [];
+  let caughtCount = 0;
+  let itemSpawnedCount = 0;
+  const keys = {};
+
+  // ===== 电脑键盘监听 =====
+  document.addEventListener('keydown', e=>{
+    keys[e.key] = true;
+  });
+  document.addEventListener('keyup', e=>{
+    keys[e.key] = false;
+  });
+
+  // ===== 手机触屏滑动控制 =====
+  canvas.addEventListener('touchmove', function(e){
+    if(!gameRunning) return;
+    e.preventDefault(); // 阻止页面滚动
+    const touch = e.touches[0];
+    // 获取画布相对坐标
+    const rect = canvas.getBoundingClientRect();
+    const touchX = touch.clientX - rect.left;
+    // 映射到canvas内部坐标
+    const scaleX = canvas.width / rect.width;
+    const canvasX = touchX * scaleX;
+    // 玩家中心跟随手指
+    playerX = canvasX - PLAYER_WIDTH / 2;
+    // 边界限制
+    if(playerX < 0) playerX = 0;
+    if(playerX > canvas.width - PLAYER_WIDTH) playerX = canvas.width - PLAYER_WIDTH;
+  })
+
+  function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  // 窗口大小改变时重新适配
+  window.addEventListener('resize', resizeCanvas);
+  // 页面加载立刻执行一次，初始化画布大小
+  resizeCanvas();
+
+
+  // 生成一个掉落物品
+  function spawnItem(){
+    if(itemSpawnedCount >= TOTAL_ITEM_COUNT) return;
+    const x = Math.random() * (canvas.width - ITEM_SIZE);
+    items.push({
+      x: x,
+      y: -ITEM_SIZE,
+      w: ITEM_SIZE,
+      h: ITEM_SIZE
+    });
+    itemSpawnedCount++;
+  }
+
+  // 碰撞检测
+  function isCollide(a, b){
+    return a.x < b.x + b.w &&
+      a.x + a.w > b.x &&
+      a.y < b.y + b.h &&
+      a.y + a.h > b.y;
+  }
+
+  // 绘制玩家（方块代替小人，可替换成图片）
+  function drawPlayer(){
+    ctx.drawImage(playerImg, playerX, playerY, PLAYER_WIDTH, PLAYER_HEIGHT);
+  }
+
+
+  // 绘制掉落物品
+  function drawItems(){
+    for(let i = items.length-1; i >=0; i--){
+      const it = items[i];
+      ctx.drawImage(itemImg, it.x, it.y, it.w, it.h);
+      it.y += ITEM_SPEED;
+
+      // 碰到玩家
+      if(isCollide(it, {x:playerX,y:playerY,w:PLAYER_WIDTH,h:PLAYER_HEIGHT})){
+        caughtCount++;
+        items.splice(i,1);
+        continue;
+      }
+      // 掉落出屏幕，移除
+      if(it.y > canvas.height){
+        items.splice(i,1);
+      }
+    }
+  }
+
+  // 游戏循环
+  function gameLoop(){
+    if(!gameRunning) return;
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    drawCoverBg(ctx, bgImg, canvas.width, canvas.height);
+
+    // 电脑键盘移动
+    if(keys['ArrowLeft'] && playerX > 0){
+      playerX -= 12;
+    }
+    if(keys['ArrowRight'] && playerX < canvas.width - PLAYER_WIDTH){
+      playerX += 12;
+    }
+
+    // 随机生成物品
+    if(Math.random() < 0.02 && itemSpawnedCount < TOTAL_ITEM_COUNT){
+      spawnItem();
+    }
+
+    drawPlayer();
+    drawItems();
+
+    // 判断游戏结束：全部物品生成完毕，并且屏幕上没有剩余物品
+    if(itemSpawnedCount >= TOTAL_ITEM_COUNT && items.length === 0){
+      gameRunning = false;
+      scoreText.innerText = caughtCount;
+      endScreen.classList.remove('hide');
+      return;
+    }
+
+    requestAnimationFrame(gameLoop);
+  }
+
+  // 重置游戏
+  function resetGame(){
+    gameRunning = true;
+    playerX = canvas.width / 2 - PLAYER_WIDTH / 2;
+    playerY = canvas.height - PLAYER_HEIGHT - 10;
+    items = [];
+    caughtCount = 0;
+    itemSpawnedCount = 0;
+    startScreen.classList.add('hide');
+    endScreen.classList.add('hide');
+    gameLoop();
+  }
+
+  startBtn.addEventListener('click', resetGame);
+  restartBtn.addEventListener('click', resetGame);
+</script>
+</body>
+</html>
+
