@@ -39,6 +39,38 @@
       padding:20px;
       text-align:center;
     }
+    #pauseBtn {
+      position: absolute;
+      top:15px;
+      left:15px;
+      z-index:20;
+      padding: 12px 30px;
+      font-size: 20px;
+      border:none;
+      border-radius:8px;
+      background: #a19bb6;
+      color: #ededf1;
+      cursor:pointer;
+    }
+    #pauseBtn:hover {
+      background: #a19bb6;
+    }
+    #settingBtn {
+      position:absolute;
+      top:15px;
+      left:120px;
+      z-index:20;
+      padding: 8px 14px;
+      font-size:16px;
+      border:none;
+      border-radius:8px;
+      background: #7b6897;
+      color: #ededf1;
+      cursor:pointer;
+    }
+    #settingBtn:hover {
+      background: #a187b9;
+    }
     button {
       padding: 12px 30px;
       font-size: 20px;
@@ -52,25 +84,161 @@
     button:hover {
       background: #a19bb6;
     }
+    #settingModal,
+    #pauseModal {
+      z-index: 30;
+    }
     .hide {
       display: none !important;
+    }
+    /* ===== 模式设置弹窗 ===== */
+    #settingModal h2 {
+      margin-bottom: 28px;
+    }
+
+    .setting-group {
+      width: 100%;
+      max-width: 380px;
+      margin-bottom: 22px;
+    }
+
+    .setting-label {
+      font-size: 16px;
+      color: #7b6897;
+      margin-bottom: 10px;
+      text-align: left;
+    }
+
+    .option-row {
+      display: flex;
+      gap: 12px;
+    }
+
+    /* 选项框容器 */
+    .option-box {
+      flex: 1;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 14px 8px;
+      border: 2px solid #c9c2dd;
+      border-radius: 10px;
+      background: #f2f1f7;
+      color: #7b6897;
+      font-size: 16px;
+      cursor: pointer;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      transition: border-color .15s, background .15s;
+    }
+
+    /* 原生 radio 铺满整个框，透明但可点击 */
+    .option-box input {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    /* 圆圈指示器：默认空心 */
+    .radio-circle {
+      width: 18px;
+      height: 18px;
+      border: 2px solid #a19bb6;
+      border-radius: 50%;
+      background: transparent;
+      flex-shrink: 0;
+      transition: background .15s, border-color .15s, box-shadow .15s;
+    }
+
+    /* 选中态：圆圈变实心 */
+    .option-box.selected {
+      border-color: #7b6897;
+      background: #ece8f3;
+    }
+
+    .option-box.selected .radio-circle {
+      background: #7b6897;
+      border-color: #7b6897;
+    }
+
+    .option-box:hover {
+      border-color: #a187b9;
     }
   </style>
 </head>
 <body>
 <canvas id="gameCanvas"></canvas>
 
+<!-- 模式设置按钮 -->
+<button id="settingBtn" class="hide">模式设置</button>
+<!-- 模式弹窗 -->
+<div id="settingModal" class="end-screen hide">
+  <h2>模式设置</h2>
+
+  <div class="setting-group">
+    <p class="setting-label">小蛋糕食量</p>
+    <div class="option-row">
+      <label class="option-box">
+        <input type="radio" name="eatMode" value="normal" checked>
+        <span class="radio-circle"></span>
+        <span class="radio-text">正常</span>
+      </label>
+      <label class="option-box">
+        <input type="radio" name="eatMode" value="dense">
+        <span class="radio-circle"></span>
+        <span class="radio-text">密集</span>
+      </label>
+    </div>
+  </div>
+
+  <div class="setting-group">
+    <p class="setting-label">进食速度</p>
+    <div class="option-row">
+      <label class="option-box">
+        <input type="radio" name="speedMode" value="normal" checked>
+        <span class="radio-circle"></span>
+        <span class="radio-text">正常</span>
+      </label>
+      <label class="option-box">
+        <input type="radio" name="speedMode" value="fast">
+        <span class="radio-circle"></span>
+        <span class="radio-text">快速</span>
+      </label>
+    </div>
+  </div>
+
+  <button id="confirmSetting">确定</button>
+</div>
+
+<!-- 暂停按钮 -->
+<button id="pauseBtn">暂停</button>
+
+<!-- 暂停弹窗 -->
+<div id="pauseModal" class="end-screen hide">
+  <h2>游戏暂停</h2>
+  <button id="resumeBtn">继续</button>
+  <button id="restartPauseBtn">重新开始</button>
+  <button id="endPauseBtn">终止游戏</button>
+</div>
+
 <!-- 开始界面 -->
 <div id="startScreen" class="start-screen">
   <h1>择兹吃小蛋糕</h1>
-  <p>电脑：← → 方向键移动<br>手机：手指在画布左右滑动控制</p>
+  <p>电脑：← → 方向键移动 空格暂停 / 继续 回车键进入游戏<br>手机：手指在画布左右滑动控制</p>
   <button id="startBtn">开始进食</button>
 </div>
 
 <!-- 结束界面 -->
 <div id="endScreen" class="end-screen hide">
   <h1>完成一次投喂！</h1>
-  <p>本轮吃到：<span id="scoreText">0</span> 个小蛋糕</p>
+  <p>本轮吃到<span id="scoreText">0</span> / <span id="totalText">0</span> 个小蛋糕</p>
+  <p>食用率：<span id="rateText">0</span>%</p>
   <button id="restartBtn">再次投喂</button>
 </div>
 
@@ -83,13 +251,46 @@
   const startBtn = document.getElementById('startBtn');
   const restartBtn = document.getElementById('restartBtn');
   const scoreText = document.getElementById('scoreText');
+  const totalText = document.getElementById('totalText');
+  const rateText  = document.getElementById('rateText');
+  const pauseModal = document.getElementById('pauseModal');
+  const pauseBtn = document.getElementById('pauseBtn');
+  const resumeBtn = document.getElementById('resumeBtn');
+  const restartPauseBtn = document.getElementById('restartPauseBtn');
+  const endPauseBtn = document.getElementById('endPauseBtn');
+  const settingBtn = document.getElementById('settingBtn');
+  const settingModal = document.getElementById('settingModal');
+  const confirmSetting = document.getElementById('confirmSetting');
 
   // ==========游戏配置==========
-  const TOTAL_ITEM_COUNT = 25; // 本局总掉落物件数量
-  const PLAYER_WIDTH = 200;
-  const PLAYER_HEIGHT = 200;
-  const ITEM_SIZE = 70;
-  const ITEM_SPEED = 2;
+  let PLAYER_WIDTH, PLAYER_HEIGHT, ITEM_SIZE, ITEM_SPEED;
+  let eatMode = "normal";    // normal / dense
+  let speedMode = "normal";  // normal / fast
+  let spawnRate = 0.02;      // 物品生成概率
+  let totalItemMin, totalItemMax; // 蛋糕总数区间
+  let TOTAL_ITEM_COUNT = 0;
+
+  pauseBtn.classList.add('hide');
+  settingBtn.classList.remove('hide');
+
+  // 动态更新尺寸函数
+  function updateGameScale(force = false) {
+    // 只有画布尺寸变化，才重新计算游戏比例
+    if(!force&&canvas.width === lastW && canvas.height === lastH) return;
+    lastW = canvas.width;
+    lastH = canvas.height;
+    // 玩家宽度占画布宽度15%，高度同宽，可以自行微调
+    PLAYER_WIDTH = canvas.width * 0.15;
+    PLAYER_HEIGHT = PLAYER_WIDTH;
+    // 掉落物品占画布宽度6%
+    ITEM_SIZE = canvas.width * 0.06;
+    // 下落速度：画布高度的0.35%，观感统一
+    if(speedMode === "fast"){
+      ITEM_SPEED = canvas.height * 0.006;
+    }else{
+      ITEM_SPEED = canvas.height * 0.003;
+    }
+  }
 
   let bgImg = new Image();
   let playerImg = new Image();
@@ -119,18 +320,58 @@
     ctx.drawImage(img, sx, sy, sw, sh, 0, 0, cw, ch);
   }
 
+  function refreshModeParam(){
+    // 食量模式
+    if(eatMode === "dense"){
+      totalItemMin = 35;
+      totalItemMax = 60;
+      spawnRate = 0.04;
+    }else{
+      totalItemMin = 25;
+      totalItemMax = 50;
+      spawnRate = 0.02;
+    }
+  }
+
   // 游戏状态
   let gameRunning = false;
-  let playerX = canvas.width / 2 - PLAYER_WIDTH / 2;
-  let playerY = canvas.height - PLAYER_HEIGHT - 10;
+  let playerX = 0;
+  let playerY = 0;
   let items = [];
   let caughtCount = 0;
   let itemSpawnedCount = 0;
   const keys = {};
+  let isPaused = false; // 暂停状态标记
+  let lastW = 0;
+  let lastH = 0;
+  let animationId = null; // 保存requestAnimationFrame的id
+  let catchTimeList = []; // 保存最近接住蛋糕的时间戳
+  let showTipText = "";   // 要显示的提示文字
 
   // ===== 电脑键盘监听 =====
   document.addEventListener('keydown', e=>{
     keys[e.key] = true;
+    // 新增：空格触发暂停，仅游戏运行时生效
+    if(e.code === 'Space'){
+      e.preventDefault(); // 防止页面滚动
+      if(!gameRunning) return;
+      if(isPaused){
+        // 如果已经暂停，空格 = 继续
+        isPaused = false;
+        pauseModal.classList.add('hide');
+      }else{
+        // 如果正在游戏，空格 = 暂停
+        isPaused = true;
+        pauseModal.classList.remove('hide');
+      }
+    }
+    if(e.code === 'Enter'){
+      e.preventDefault();
+      // 只有游戏未运行时（开始界面 / 结算结束界面），回车才触发开始/重新开始
+      if(!gameRunning){
+        resetGame();
+      }
+    }
   });
   document.addEventListener('keyup', e=>{
     keys[e.key] = false;
@@ -138,7 +379,7 @@
 
   // ===== 手机触屏滑动控制 =====
   canvas.addEventListener('touchmove', function(e){
-    if(!gameRunning) return;
+    if(!gameRunning|| isPaused) return;
     e.preventDefault(); // 阻止页面滚动
     const touch = e.touches[0];
     // 获取画布相对坐标
@@ -157,12 +398,12 @@
   function resizeCanvas() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
+    updateGameScale();
   }
   // 窗口大小改变时重新适配
   window.addEventListener('resize', resizeCanvas);
   // 页面加载立刻执行一次，初始化画布大小
   resizeCanvas();
-
 
   // 生成一个掉落物品
   function spawnItem(){
@@ -180,16 +421,15 @@
   // 碰撞检测
   function isCollide(a, b){
     return a.x < b.x + b.w &&
-      a.x + a.w > b.x &&
-      a.y < b.y + b.h &&
-      a.y + a.h > b.y;
+            a.x + a.w > b.x &&
+            a.y < b.y + b.h &&
+            a.y + a.h > b.y;
   }
 
-  // 绘制玩家（方块代替小人，可替换成图片）
+  // 绘制玩家
   function drawPlayer(){
     ctx.drawImage(playerImg, playerX, playerY, PLAYER_WIDTH, PLAYER_HEIGHT);
   }
-
 
   // 绘制掉落物品
   function drawItems(){
@@ -202,6 +442,7 @@
       if(isCollide(it, {x:playerX,y:playerY,w:PLAYER_WIDTH,h:PLAYER_HEIGHT})){
         caughtCount++;
         items.splice(i,1);
+        catchTimeList.push(Date.now());
         continue;
       }
       // 掉落出屏幕，移除
@@ -217,36 +458,87 @@
     ctx.clearRect(0,0,canvas.width,canvas.height);
     drawCoverBg(ctx, bgImg, canvas.width, canvas.height);
 
-    // 电脑键盘移动
-    if(keys['ArrowLeft'] && playerX > 0){
-      playerX -= 12;
-    }
-    if(keys['ArrowRight'] && playerX < canvas.width - PLAYER_WIDTH){
-      playerX += 12;
-    }
+    // 电脑键盘移动，速度自适应
+    if(!isPaused) {
+      let moveSpeed;
+      if(speedMode === "fast"){
+        moveSpeed = canvas.width * 0.02;
+      }else{
+        moveSpeed = canvas.width * 0.013;
+      }
 
-    // 随机生成物品
-    if(Math.random() < 0.02 && itemSpawnedCount < TOTAL_ITEM_COUNT){
-      spawnItem();
+      if (keys['ArrowLeft'] && playerX > 0) {
+        playerX -= moveSpeed;
+      }
+      if (keys['ArrowRight'] && playerX < canvas.width - PLAYER_WIDTH) {
+        playerX += moveSpeed;
+      }
+
+      // 随机生成物品
+      if (Math.random() < spawnRate && itemSpawnedCount < TOTAL_ITEM_COUNT) {
+        spawnItem();
+      }
+
+      // 清理超过1秒的捕捉记录
+      const now = Date.now();
+      catchTimeList = catchTimeList.filter(t => now - t < 1000);
+      // 判断提示文本
+      if(catchTimeList.length >=3){
+        showTipText = "吃美了";
+      }else if(catchTimeList.length >=1){
+        showTipText = "好吃！";
+      }else{
+        showTipText = "";
+      }
+
+      drawPlayer();
+      drawItems();
+
+      // 绘制顶部提示文字
+      if(showTipText){
+        ctx.save();
+        ctx.font = "bold 40px system-ui";
+        ctx.fillStyle = "#a19bb6";
+        ctx.textAlign = "center";
+        ctx.fillText(showTipText, canvas.width / 2, 80);
+        ctx.restore();
+      }
+
+      // 判断游戏结束：全部物品生成完毕，并且屏幕上没有剩余物品
+      if (itemSpawnedCount >= TOTAL_ITEM_COUNT && items.length === 0) {
+        gameRunning = false;
+        cancelAnimationFrame(animationId);
+        pauseBtn.classList.add('hide');
+        settingBtn.classList.remove('hide');
+        scoreText.innerText = caughtCount;
+        totalText.innerText = TOTAL_ITEM_COUNT;
+
+        // 食用率 = 吃到数 / 总数，四舍五入取整
+        const rate = TOTAL_ITEM_COUNT > 0
+                ? Math.round(caughtCount / TOTAL_ITEM_COUNT * 100).toFixed(1)
+                : 0;
+        rateText.innerText = rate;
+
+        endScreen.classList.remove('hide');
+        return;
+      }
     }
-
-    drawPlayer();
-    drawItems();
-
-    // 判断游戏结束：全部物品生成完毕，并且屏幕上没有剩余物品
-    if(itemSpawnedCount >= TOTAL_ITEM_COUNT && items.length === 0){
-      gameRunning = false;
-      scoreText.innerText = caughtCount;
-      endScreen.classList.remove('hide');
-      return;
-    }
-
-    requestAnimationFrame(gameLoop);
+    animationId = requestAnimationFrame(gameLoop);
   }
 
   // 重置游戏
   function resetGame(){
+    cancelAnimationFrame(animationId);
+    refreshModeParam();
+    // 随机本局蛋糕总数
+    TOTAL_ITEM_COUNT = Math.floor(Math.random()*(totalItemMax - totalItemMin + 1)) + totalItemMin;
+    catchTimeList = [];
+    showTipText = "";
     gameRunning = true;
+    isPaused = false; // 重置暂停标记
+    pauseModal.classList.add('hide'); // 关闭暂停弹窗
+    settingBtn.classList.add('hide');
+    pauseBtn.classList.remove('hide');
     playerX = canvas.width / 2 - PLAYER_WIDTH / 2;
     playerY = canvas.height - PLAYER_HEIGHT - 10;
     items = [];
@@ -256,9 +548,69 @@
     endScreen.classList.add('hide');
     gameLoop();
   }
+  // 把 radio 的选中状态同步成 .selected 类（驱动圆圈实心）
+  function syncSettingUI(){
+    document.querySelectorAll('.option-box').forEach(box => {
+      const input = box.querySelector('input');
+      box.classList.toggle('selected', input.checked);
+    });
+  }
 
+  // 打开设置弹窗：回填当前已保存的模式，再刷新圆圈
+  settingBtn.addEventListener('click', ()=>{
+    document.querySelector(`input[name="eatMode"][value="${eatMode}"]`).checked = true;
+    document.querySelector(`input[name="speedMode"][value="${speedMode}"]`).checked = true;
+    syncSettingUI();
+    settingModal.classList.remove('hide');
+  });
+
+  // 点击任意选项框时刷新圆圈
+  document.querySelectorAll('.option-box input').forEach(input => {
+    input.addEventListener('change', syncSettingUI);
+  });
+
+  // 确定：写回模式，关闭弹窗，让速度立即生效
+  confirmSetting.addEventListener('click', ()=>{
+    eatMode   = document.querySelector('input[name="eatMode"]:checked').value;
+    speedMode = document.querySelector('input[name="speedMode"]:checked').value;
+
+    settingModal.classList.add('hide');
+    updateGameScale(true);   // 见 3.4
+  });
+
+  // 页面初始化时先把默认选中态渲染出来
+  syncSettingUI();
   startBtn.addEventListener('click', resetGame);
   restartBtn.addEventListener('click', resetGame);
+  pauseBtn.addEventListener('click', ()=>{
+    if(!gameRunning) return;
+    isPaused = true;
+    pauseModal.classList.remove('hide');
+  })
+  resumeBtn.addEventListener('click', ()=>{
+    isPaused = false;
+    pauseModal.classList.add('hide');
+  })
+  restartPauseBtn.addEventListener('click', resetGame);
+  endPauseBtn.addEventListener('click', ()=>{
+    cancelAnimationFrame(animationId);
+    gameRunning = false;
+    isPaused = false;
+    pauseModal.classList.add('hide');
+    pauseBtn.classList.add('hide');
+    settingBtn.classList.remove('hide');
+    startScreen.classList.remove('hide');
+  })
+  // 打开设置弹窗
+  settingBtn.addEventListener('click', ()=>{
+    settingModal.classList.remove('hide');
+  })
+  // 关闭弹窗
+  confirmSetting.addEventListener('click', ()=>{
+    settingModal.classList.add('hide');
+    updateGameScale(true);
+  })
+
 </script>
 </body>
 </html>
